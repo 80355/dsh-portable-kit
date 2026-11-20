@@ -1,0 +1,12 @@
+{
+  "_说明": "控制台面板运行时配置。复制成 console/panel.config.json 后修改；该文件已被 .gitignore。",
+  "bridgePort": 3100,
+  "consolePort": 3300,
+  "snowlumaPort": 5099,
+  "dshUrl": "http://127.0.0.1:3080",
+  "qqExe": "",
+  "qqNumber": "",
+  "autoRestart": false,
+  "_qqExe": "QQ 客户端路径，留空则控制台的『启动 QQ』按钮不可用",
+  "_autoRestart": "子进程异常退出时是否自动重启"
+}

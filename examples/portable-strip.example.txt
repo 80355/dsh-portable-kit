@@ -1,0 +1,18 @@
+# portable-strip.txt —— 声明式裁剪清单
+#
+# 放在便携栈根目录（卡根）。一行一个要【整块移除】的配置块 id 前缀。
+# `#` 开头是注释。匹配是按「- id: <前缀>」做的，所以写前缀即可。
+#
+# 生效方式：portable-repath.mjs 每次启动都会读这个文件，把
+# cordis.patch.yml 里对应的缩进块整段摘掉，并留下注释：
+#     # [portable] 已按 portable-strip.txt 移除: mcp-tts-voice-7
+#
+# 幂等：跑多少遍都只有那一行注释。想恢复就删掉下面那一行，重启即可。
+
+# ---- 语音：两个模型合计 34.4GB，卡上放不下 ----
+mcp-tts-voice
+
+# ---- 其它可能想关掉的东西（按需取消注释）----
+# mcp-douyin-browser       # 抖音浏览器（占内存，不用时关）
+# mcp-snowluma             # QQ 网关
+# mcp-snowluma-host

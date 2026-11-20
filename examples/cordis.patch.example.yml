@@ -1,0 +1,38 @@
+# cordis.patch.yml 结构示例
+#
+# 这是 DSH 的 profile 补丁文件，MCP 服务的注册都在这里。
+# 便携栈里，下面这些绝对路径【不要手改】——每次启动都会由
+# portable-repath.mjs 重写成当前卡/盘的路径。
+#
+# 占位符说明：
+#   <NODE>      → 便携栈里的 node 可执行文件，如 E:\DSH\node\node.exe
+#   <WORKSPACE> → 便携栈里的 workspace 目录，如 E:\DSH\workspace
+
+- id: mcp-shared-memory
+  name: shared-memory
+  type: stdio
+  command: '<NODE>'
+  args:
+    - '<WORKSPACE>/qq-bridge/src/mcp-shared-memory.js'
+  env: {}
+
+- id: mcp-web-search-safe
+  name: web-search-safe
+  type: stdio
+  command: '<NODE>'
+  args:
+    - '<WORKSPACE>/qq-bridge/src/mcp-web-search-safe.js'
+
+# 语音能力示例：不想要就把它写进 portable-strip.txt（一行 mcp-tts-voice），
+# 启动时会被整块摘掉并留一行注释。
+- id: mcp-tts-voice
+  name: tts-voice
+  type: stdio
+  command: '<NODE>'
+  args:
+    - '<WORKSPACE>/qq-bridge/src/mcp-tts-voice.js'
+
+# agent 默认模型：provider 名字要与你 .credentials.yaml 里的条数对应
+- id: agent-default-model
+  provider: your-provider-id
+  model: your-model-id
