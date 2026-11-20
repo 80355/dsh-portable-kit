@@ -67,6 +67,19 @@ DSH（DeepSeek Harness）是个能读写文件、跑命令、开浏览器的本�
 没找到 Node 时会明确告诉你「把 Node 22 拷到 `node` 目录」或「装 Node LTS」，而不是弹一堆英文报错。
 
 详见 [docs/功能手册与问答.md](docs/功能手册与问答.md) 第 12 节。
+
+<table>
+  <tr>
+    <td width="50%"><img src="assets/gui/check.png" alt="① 环境体检"><br><sub><b>① 环境体检</b> —— 8 项一次列清，红/黄/绿 + 修复建议</sub></td>
+    <td width="50%"><img src="assets/gui/config.png" alt="② 填 Key · 选模块"><br><sub><b>② 填 Key · 选模块</b> —— 4 类 Key 打码回读，9 个模块勾选即生效</sub></td>
+  </tr>
+  <tr>
+    <td><img src="assets/gui/run.png" alt="③ 启动 · 看日志"><br><sub><b>③ 启动 · 看日志</b> —— 一键起 DSH + 控制台，自动认出带 token 的地址</sub></td>
+    <td><img src="assets/gui/help.png" alt="④ 内置 FAQ"><br><sub><b>④ 内置 FAQ</b> —— 常见故障就在页面上，不用翻文档</sub></td>
+  </tr>
+</table>
+
+> 截图就是真机界面（Edge 无头模式抓的），不是设计稿。
 ### 2. 真·便携：盘符变了也能跑
 
 硬编码绝对路径是所有「绿色版」翻车的第一名。这里用**每次启动都幂等重写**的方式解决：

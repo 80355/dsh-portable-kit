@@ -60,6 +60,20 @@ double-click start-gui.bat → it finds Node → serves 127.0.0.1:3400 → 4 ste
 - **④ Troubleshooting** — common failures are answered inline, no doc-diving needed.
 
 The launcher and the console share `console/panel.config.json`, so it does not matter which UI you use.
+
+<table>
+  <tr>
+    <td width="50%"><img src="assets/gui/check.png" alt="1) Health check"><br><sub><b>1) Health check</b> — 8 items, red/yellow/green, fix hints inline</sub></td>
+    <td width="50%"><img src="assets/gui/config.png" alt="2) Keys & modules"><br><sub><b>2) Keys &amp; modules</b> — 4 key types, masked read-back; 9 toggles</sub></td>
+  </tr>
+  <tr>
+    <td><img src="assets/gui/run.png" alt="3) Start & logs"><br><sub><b>3) Start &amp; logs</b> — DSH + console, tokenized URL auto-detected</sub></td>
+    <td><img src="assets/gui/help.png" alt="4) Built-in FAQ"><br><sub><b>4) Built-in FAQ</b> — common failures answered on the page</sub></td>
+  </tr>
+</table>
+
+> These are real UI screenshots (captured with headless Edge), not mockups.
+
 ### 2. Real portability: it survives a drive-letter change
 
 Hard-coded absolute paths are where every "green/portable build" dies. Here they are **rewritten idempotently on every launch**:
