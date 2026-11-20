@@ -66,7 +66,7 @@ foreach ($f in @('cordis.patch.yml', 'package.json')) {
 # 4) shared memory + QQ persona in the workspace
 foreach ($rel in @('workspace\shared', 'workspace\qq-bridge\roles')) {
   $s = Join-Path $CardRoot $rel
-  $machineWs = 'D:\Documents\deepseek-harness\default-workspace'
+  $machineWs = if ($env:MACHINE_WORKSPACE) { $env:MACHINE_WORKSPACE } else { Split-Path -Parent $PSScriptRoot }
   $m = switch ($rel) {
     'workspace\shared'        { Join-Path $machineWs 'shared' }
     'workspace\qq-bridge\roles' { Join-Path $machineWs 'qq-bridge\roles' }

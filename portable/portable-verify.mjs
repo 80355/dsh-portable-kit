@@ -48,7 +48,7 @@ isDir(path.join(ROOT, 'workspace')) ? ok('workspace 存在') : bad('缺 workspac
 console.log(`\n== 3. 路径可移植性（不能残留别的机器的绝对路径）==`);
 const yml = isFile(path.join(PROFILE, 'cordis.patch.yml')) ? fs.readFileSync(path.join(PROFILE, 'cordis.patch.yml'), 'utf8') : '';
 const pkgRaw = isFile(path.join(PROFILE, 'package.json')) ? fs.readFileSync(path.join(PROFILE, 'package.json'), 'utf8') : '';
-const deadPatterns = [/C:[\\/]+Users[\\/]+[A-Za-z0-9_.-]+[\\/]+(?:dsh-workspace|[.]dsh)/i, /D:[\\/]+Documents[\\/]+deepseek-harness/i, /D:[\\/]+dsh[\\/]/i];
+const deadPatterns = [/C:[\\/]+Users[\\/]+[A-Za-z0-9_.-]+[\\/]+(?:dsh-workspace|[.]dsh)/i];
 for (const [label, text] of [['cordis.patch.yml', yml], ['package.json', pkgRaw]]) {
   const hits = deadPatterns.filter((re) => re.test(text));
   if (hits.length) {
@@ -73,7 +73,7 @@ const schem = path.join(DSH_HOME, 'plugins', 'qq-mode-console', 'node_modules', 
 isDir(schem) ? ok('qq-mode-console 的 schemastery 实体存在') : bad('qq-mode-console 缺 schemastery 依赖');
 isDir(path.join(ROOT, 'dsh-workspace', 'node_modules', '@deepseek-ai', 'dsh')) ? ok('checkout node_modules 完整') : bad('checkout node_modules 不完整');
 
-console.log(`\n== 5. 记忆 / 人格（主人的"大肥鱼"要跟着走）==`);
+console.log(`\n== 5. 记忆 / 人格（示例人格"大肥鱼"要跟着走）==`);
 const mem = path.join(WS, 'shared', '大肥鱼记忆.md');
 bytes(mem) > 0 ? ok(`共享记忆 ${Math.round(bytes(mem) / 1024)} KB`) : bad('缺共享记忆 shared/大肥鱼记忆.md');
 const persona = path.join(DSH_HOME, 'douyin-browser', 'memory', 'persona', 'role-card.md');
@@ -86,7 +86,7 @@ isFile(path.join(PROFILE, '.credentials.yaml')) || isFile(path.join(DSH_HOME, '.
   ? ok('凭据文件在')
   : warn('没找到 .credentials.yaml（可能只在 DSH_HOME 根，属正常）');
 
-console.log(`\n== 6. 语音功能（主人要求卡上不带）==`);
+console.log(`\n== 6. 语音功能（本栈默认不带）==`);
 {
   const stripFile = path.join(ROOT, 'portable-strip.txt');
   const stripList = isFile(stripFile)

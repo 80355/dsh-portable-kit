@@ -62,7 +62,27 @@ mcp-tts-voice
 `repath` removes that indented block from `cordis.patch.yml` entirely and leaves a comment saying who removed it.
 Want it back? Delete the line and re-run.
 
-### 3. Phone control: vision for meaning, UI-tree for coordinates
+### 3. A GUI console: toggle modules, paste API keys
+
+No YAML editing. `console/server.mjs` serves a local panel at `http://127.0.0.1:3300`
+with a "Modules & API keys" card:
+
+- **local services** — QQ bridge (3100), SnowLuma gateway (5099), Douyin automation, phone control;
+- **MCP tool switches** — `mcp-snowluma`, `mcp-snowluma-host`, `mcp-web-search-safe`,
+  `mcp-shared-memory`, `mcp-tts-voice`. Unchecking one appends a line to `portable-strip.txt`
+  and re-runs `repath`, so the block is **actually removed** from the config — after restarting DSH
+  the tools are gone from the model's tool list, not merely hidden in the UI;
+- **API key inputs** — vision / multimodal, OpenAI-compatible, model channel, fallback route.
+  Saved into `panel.config.json` (gitignored) and injected into every child process
+  (SnowLuma, QQ bridge, DSH). Stored keys are **masked** (`sk-d…3456`) when read back.
+
+Same logic over HTTP: `GET/POST /api/settings`.
+
+> The panel binds to `127.0.0.1` only and accepts cross-origin requests solely from
+> `http://127.0.0.1:3300`. It has **no auth** — anyone who can open this machine can read
+> those settings anyway, so never expose port 3300 to a LAN.
+
+### 4. Phone control: vision for meaning, UI-tree for coordinates
 
 Pure vision-based tapping jitters badly on real devices (DPI, scaling, notches, `dumpsys` coordinate mismatch).
 The rule here is:
@@ -76,7 +96,7 @@ screenshot → grid overlay → vision model reads meaning → uiNodes()/findNod
 - Wireless ADB first: USB keeps dropping, so `adb pair <ip>:<port> <code>` then `_adb-tls-connect`.
 - See [docs/手机操控.md](docs/手机操控.md).
 
-### 4. Douyin automation: your browser, not a headless one
+### 5. Douyin automation: your browser, not a headless one
 
 No fake logins, no risk-control API abuse. Launch your own Edge/Chrome with `--remote-debugging-port=9222`,
 then drive the real page over CDP — account state, feed and DMs are genuinely yours.
@@ -87,7 +107,7 @@ then drive the real page over CDP — account state, feed and DMs are genuinely 
 
 See [docs/抖音自动化.md](docs/抖音自动化.md).
 
-### 5. Vendor-ROM adaptation field notes
+### 6. Vendor-ROM adaptation field notes
 
 Honor's MagicOS iAware freezes third-party processes **even in the foreground**, and blocks third-party
 `NotificationListenerService` binds at the system layer. [docs/MagicOS适配实录.md](docs/MagicOS适配实录.md)

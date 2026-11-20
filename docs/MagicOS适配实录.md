@@ -3,7 +3,7 @@
 这是一份**实测记录**，不是教程。记录的是：为了让一个第三方 App 在荣耀手机上「稳定听到微信通知」，
 我们把坑挖到了多深，以及哪些路根本走不通。
 
-测试机：HONOR BKQ-AN00 / MagicOS 11 / Android 17 (SDK 37)；对照机：荣耀 60 Pro / MagicOS 8 / Android 14。
+测试机：某荣耀旗舰（MagicOS 11 / Android 17，SDK 37）；对照机：另一台荣耀（MagicOS 8 / Android 14）。
 
 ---
 

@@ -150,6 +150,15 @@
   .loghead .right{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
   .chk input{accent-color:#2f81f7}
+  .set-title{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em}
+  .set-sub{font-size:11px;color:var(--dim);margin-top:4px;padding-top:8px;border-top:1px dashed #ffffff0d}
+  .set-col{display:flex;flex-direction:column;gap:7px}
+  .key-box{display:flex;flex-direction:column;gap:3px;margin-bottom:7px}
+  .key-box .key-top{display:flex;align-items:center;gap:6px}
+  .key-box .key-label{font-size:11.5px;color:var(--muted)}
+  .key-box .key-state{font-size:10.5px;color:var(--dim);margin-left:auto}
+  .key-box .key-hint{font-size:10.5px;color:#5d7699;line-height:1.4}
+  .key-box.set .key-state{color:#3fb950}
   .logbox{
     margin:0;background:#080c12;border:1px solid var(--border);border-radius:10px;
     height:min(46vh,440px);min-height:220px;overflow:auto;padding:10px 12px;
@@ -328,6 +337,35 @@
     </div>
   </section>
 
+  <section class="panel" id="cardSettings">
+    <h2>⚙️ 模块开关 &amp; API 配置 <span class="hint">关掉的模块不启动，也不出现在 DSH 工具里；Key 只存本机</span></h2>
+    <div class="ch-grid">
+      <div class="set-col">
+        <div class="set-title">本地服务</div>
+        <label class="chk"><input type="checkbox" data-module="qqBridge"> QQ 桥接（3100）</label>
+        <label class="chk"><input type="checkbox" data-module="snowluma"> SnowLuma 网关（5099）</label>
+        <label class="chk"><input type="checkbox" data-module="douyin"> 抖音自动化（scripts/douyin）</label>
+        <label class="chk"><input type="checkbox" data-module="phone"> 手机操控（tools/phone）</label>
+        <div class="set-sub">DSH 里的 MCP 工具</div>
+        <label class="chk"><input type="checkbox" data-module="mcpSnowluma"> QQ 工具（snowluma-safe）</label>
+        <label class="chk"><input type="checkbox" data-module="mcpSnowlumaHost"> 宿主信息（snowluma-host）</label>
+        <label class="chk"><input type="checkbox" data-module="mcpWebSearch"> 联网搜索（web-search-safe）</label>
+        <label class="chk"><input type="checkbox" data-module="mcpSharedMemory"> 共享记忆（shared-memory）</label>
+        <label class="chk"><input type="checkbox" data-module="mcpTtsVoice"> 语音（tts-voice · 卡上未带模型）</label>
+        <div class="rule-note">MCP 开关会改卡根 <span class="mono">portable-strip.txt</span> 并立刻重写 DSH 配置；<b>重启 DSH 后生效</b>。</div>
+      </div>
+      <div class="set-col">
+        <div class="set-title">API Key <span class="hint">保存到 console/panel.config.json（已 .gitignore）</span></div>
+        <div id="setKeyList"><div class="dim">读取中…</div></div>
+        <div class="ch-actions">
+          <button class="btn tiny ghost" id="setSave">保存配置</button>
+          <button class="btn tiny ghost" id="setReload">重新读取</button>
+        </div>
+        <div class="rule-note" id="setNote">留空的 Key 表示「不修改」；保存后新启动的桥接 / SnowLuma / DSH 会带上它。</div>
+      </div>
+    </div>
+  </section>
+
   <section class="actions" id="actionBar">
     <span class="label">常用操作：</span>
     <button class="btn primary" data-action="start-all"><span class="spin"></span>🚀 一键启动</button>
@@ -364,7 +402,7 @@
         <dt>DSH 事件流</dt><dd id="dDshReady">—</dd>
         <dt>SnowLuma 心跳</dt><dd id="dHeartbeat">—</dd>
         <dt>最近数据包</dt><dd id="dPacket">—</dd>
-        <dt>主人 QQ</dt><dd id="dOwner" class="mono">—</dd>
+        <dt>机器人 QQ</dt><dd id="dOwner" class="mono">—</dd>
         <dt>白名单群</dt><dd id="dGroups" class="mono">—</dd>
         <dt>白名单好友</dt><dd id="dPrivate" class="mono">—</dd>
         <dt>语音播报</dt><dd id="dVoice" class="dim">预留（暂未接入）</dd>
@@ -1242,6 +1280,80 @@
         .finally(function () { test.disabled = false; });
     });
   }
+
+  /* ---------------------- 模块开关 & API Key ---------------------- */
+
+  var settingsState = { modules: {}, keys: {} };
+
+  function renderSettings(data) {
+    settingsState = data || { modules: {}, keys: {} };
+    var mods = settingsState.modules || {};
+    Array.prototype.forEach.call(document.querySelectorAll('[data-module]'), function (box) {
+      var k = box.getAttribute('data-module');
+      box.checked = mods[k] !== false;
+    });
+    var list = $('#setKeyList');
+    if (!list) return;
+    list.innerHTML = '';
+    var keys = settingsState.keys || {};
+    Object.keys(keys).forEach(function (name) {
+      var info = keys[name] || {};
+      var box = document.createElement('div');
+      box.className = 'key-box' + (info.set ? ' set' : '');
+      box.innerHTML =
+        '<div class="key-top"><span class="key-label mono">' + name + '</span>' +
+        '<span class="key-state">' + (info.set ? '已设置 ' + (info.masked || '') : '未设置') + '</span></div>' +
+        '<input class="ch-input" type="password" data-key="' + name + '" autocomplete="off" ' +
+        'placeholder="' + (info.set ? '留空 = 不修改；输入新值覆盖' : (info.hint || '粘贴 key')) + '">' +
+        (info.label ? '<div class="key-hint">' + info.label + '</div>' : '');
+      list.appendChild(box);
+    });
+  }
+
+  function refreshSettings() {
+    return api('/api/settings').then(function (r) {
+      if (!r || !r.ok) { setText('setNote', '读取失败：' + ((r && r.error) || '未知')); return; }
+      renderSettings(r);
+      setText('setNote', '已读取本机配置。留空的 Key 表示「不修改」。');
+    }).catch(function (err) { setText('setNote', '读取失败：' + err.message); });
+  }
+
+  function collectSettings() {
+    var modules = {};
+    Array.prototype.forEach.call(document.querySelectorAll('[data-module]'), function (box) {
+      modules[box.getAttribute('data-module')] = !!box.checked;
+    });
+    var env = {};
+    Array.prototype.forEach.call(document.querySelectorAll('[data-key]'), function (input) {
+      var v = (input.value || '').trim();
+      if (v) env[input.getAttribute('data-key')] = v;
+    });
+    return { modules: modules, env: env };
+  }
+
+  var setSave = $('#setSave');
+  if (setSave) setSave.addEventListener('click', function () {
+    var payload = collectSettings();
+    setSave.disabled = true;
+    setText('setNote', '保存中…');
+    api('/api/settings', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(function (r) {
+      if (!r || !r.ok) { showToast('保存失败：' + ((r && r.error) || '未知'), 'bad'); return; }
+      renderSettings({ modules: r.modules, keys: settingsState.keys });
+      var a = r.applied || {};
+      var txt = a.changed ? ('已写入 portable-strip.txt' + (a.repath && a.repath.ok ? '，DSH 配置已重写' : '，repath 未成功')) : '配置已保存（裁剪清单无变化）';
+      setText('setNote', txt + (a.note ? ' · ' + a.note : '') + ' · 重启对应服务后生效');
+      showToast('配置已保存', 'ok');
+    }).catch(function (err) { showToast('保存失败：' + err.message, 'bad'); })
+      .finally(function () { setSave.disabled = false; });
+  });
+
+  var setReload = $('#setReload');
+  if (setReload) setReload.addEventListener('click', function () { refreshSettings(); });
+
+  refreshSettings();
 
   bindChannel();
   refreshChannel();

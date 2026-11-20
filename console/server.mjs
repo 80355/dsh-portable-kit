@@ -47,6 +47,12 @@ const BRIDGE_LOCK_FILE = path.join(BRIDGE_STATE_DIR, 'bridge.lock');
 const BRIDGE_CONFIG = path.join(BRIDGE_DIR, 'config.json');
 const BRIDGE_URL = 'http://127.0.0.1:3100';
 const PANEL_CONFIG_FILE = path.join(CONSOLE_DIR, 'panel.config.json');
+// 模块开关写进卡根的声明式裁剪清单，再由 portable-repath.mjs 落到 DSH 配置里
+const STRIP_FILE = path.join(WORKSPACE, 'portable-strip.txt');
+const REPATH_CANDIDATES = [
+  path.join(WORKSPACE, 'portable-repath.mjs'),
+  path.join(WORKSPACE, 'portable', 'portable-repath.mjs'),
+];
 // QQ 客户端默认路径（可在 console/panel.config.json 的 qqExe 覆盖）
 const DEFAULT_QQ_EXE = process.env.QQ_EXE || '';
 
@@ -477,6 +483,123 @@ async function loadPanelConfig() {
 }
 
 let _slSession = { token: null, at: 0 };
+
+/* ------------------------------------------------------------------ */
+/* 模块开关 + API Key（图形化配置）                                     */
+/* ------------------------------------------------------------------ */
+
+// 默认全开；语音模块默认关（卡上不带语音，见 docs/便携卡使用说明.md）
+const DEFAULT_MODULES = {
+  qqBridge: true,
+  snowluma: true,
+  douyin: true,
+  phone: true,
+  mcpSnowluma: true,
+  mcpSnowlumaHost: true,
+  mcpWebSearch: true,
+  mcpSharedMemory: true,
+  mcpTtsVoice: false,
+};
+
+// 模块 key → cordis.patch.yml 里的 MCP 条目 id 前缀
+const MCP_MODULE_IDS = {
+  mcpSnowluma: 'mcp-snowluma',
+  mcpSnowlumaHost: 'mcp-snowluma-host',
+  mcpWebSearch: 'mcp-web-search-safe',
+  mcpSharedMemory: 'mcp-shared-memory',
+  mcpTtsVoice: 'mcp-tts-voice',
+};
+
+// 控制台面板上直接暴露的 Key（值只写本机 panel.config.json，不写进仓库）
+const KNOWN_KEYS = [
+  { key: 'COCO_KEY', label: '视觉 / 多模态 API Key', hint: '手机操控看屏幕、图片复核用；兼容 OpenAI 协议的 key 都行' },
+  { key: 'OPENAI_API_KEY', label: 'OpenAI API Key', hint: '可留空；填了会作为视觉/模型的兜底 key' },
+  { key: 'COCO_API_KEY', label: '模型通道 Key（COCO）', hint: 'DSH 走中转时的模型 key；留空则用 DSH 自己的凭据文件' },
+  { key: 'COCO233_API_KEY', label: '模型通道 Key（备用线路）', hint: '可选，第二条中转线路' },
+];
+
+const SETTINGS_KEYS = KNOWN_KEYS.map((k) => k.key);
+
+async function loadSettings() {
+  const cfg = (await loadPanelConfig()) || {};
+  const s = cfg.settings || {};
+  return {
+    modules: { ...DEFAULT_MODULES, ...(s.modules || {}) },
+    env: { ...(s.env || {}) },
+  };
+}
+
+/** 合并写入 panel.config.json 的 settings 段（不动其它已有字段）。 */
+async function saveSettings(patch) {
+  const cfg = (await loadPanelConfig()) || {};
+  const s = cfg.settings || {};
+  const modules = { ...DEFAULT_MODULES, ...(s.modules || {}), ...((patch && patch.modules) || {}) };
+  const env = { ...(s.env || {}), ...((patch && patch.env) || {}) };
+  for (const k of Object.keys(env)) {
+    const v = env[k];
+    if (v === null || v === undefined || String(v).trim() === '') delete env[k];
+    else env[k] = String(v).trim();
+  }
+  cfg.settings = { modules, env };
+  await fsp.mkdir(CONSOLE_DIR, { recursive: true });
+  await fsp.writeFile(PANEL_CONFIG_FILE, `${JSON.stringify(cfg, null, 2)}\n`, 'utf8');
+  return cfg.settings;
+}
+
+function maskKey(value) {
+  if (!value) return null;
+  const s = String(value);
+  if (s.length <= 8) return '***';
+  return `${s.slice(0, 4)}…${s.slice(-4)}`;
+}
+
+/** 子进程环境：process.env + 面板里配的 Key（面板优先）。 */
+async function panelEnv() {
+  const s = await loadSettings();
+  const env = { ...process.env };
+  for (const [k, v] of Object.entries(s.env)) if (v) env[k] = v;
+  // 只填了 COCO_KEY 时也当作模型通道 key 的低优先兜底
+  if (!env.COCO_API_KEY && env.COCO_KEY) env.COCO_API_KEY = env.COCO_KEY;
+  return env;
+}
+
+/**
+ * 把模块开关落到卡根的 portable-strip.txt，并跑一次 portable-repath.mjs。
+ * 关掉的 MCP 模块会从 DSH 配置里整段摘掉（重启 DSH 后工具列表里就没有了）。
+ */
+async function applyModuleSwitches(modules) {
+  const disabled = Object.entries(MCP_MODULE_IDS)
+    .filter(([mk]) => !modules[mk])
+    .map(([, id]) => id);
+  const text = [
+    '# 由本地控制台「模块开关」维护：一行一个要关闭的配置块 id 前缀',
+    '# 关掉的模块不会出现在 DSH 的工具列表里；改完要重启 DSH 才生效',
+    ...disabled,
+  ].join('\n') + '\n';
+
+  let old = null;
+  try {
+    old = await fsp.readFile(STRIP_FILE, 'utf8');
+  } catch {
+    old = null;
+  }
+  const changed = old !== text;
+  if (changed) await fsp.writeFile(STRIP_FILE, text, 'utf8');
+
+  // 只有本控制台所在的栈自己有 .dsh/profiles 时才允许改写配置，
+  // 否则（例如在源码仓里直接跑控制台）会误改别的安装。
+  const ownHome = path.join(WORKSPACE, '.dsh', 'profiles');
+  if (!fs.existsSync(ownHome)) {
+    return { changed, disabled, repath: null, note: '本栈没有 .dsh/profiles，已跳过改写；在卡上运行时会自动生效' };
+  }
+  const script = REPATH_CANDIDATES.find((p) => fs.existsSync(p));
+  if (!script) {
+    return { changed, disabled, repath: null, note: '没找到 portable-repath.mjs，改动会在下次启动时由 start-dsh.bat 应用' };
+  }
+  const r = await run(NODE_EXE, [script], { cwd: WORKSPACE, timeoutMs: 30000 });
+  const out = `${r.stdout || ''}${r.stderr || ''}`.trim();
+  return { changed, disabled, repath: { ok: r.code === 0, output: out.slice(0, 800) } };
+}
 
 /** 用 panel.config.json 的账号密码登录 SnowLuma，拿 Bearer token。 */
 async function snowlumaLogin(force = false) {
@@ -1181,6 +1304,7 @@ async function startSnowluma() {
     launched = spawnDetached(SNOWLUMA_NODE, ['index.mjs'], {
       cwd: SNOWLUMA_DIR,
       logName: 'launch-snowluma.log',
+      env: await panelEnv(),
     });
   } catch (err) {
     return { ok: false, detail: `启动 SnowLuma 失败：${String(err)}` };
@@ -1241,7 +1365,7 @@ async function startBridge() {
       /* ignore */
     }
   }
-  const env = { ...process.env, PATH: `${NODE_DIR};${process.env.PATH || ''}` };
+  const env = { ...(await panelEnv()), PATH: `${NODE_DIR};${process.env.PATH || ''}` };
   // 注意：这里故意不加内层引号——Node 在 Windows 上会把带空格的参数整体加引号，
   // cmd /c 能正确剥掉外层引号；一旦内层再嵌 \"，cmd 解析会失败（实测起不来）。
   // 工作区路径确实不含空格；同时把守护 PID 记到 state/bridge-guard.pid 作为兜底。
@@ -1594,7 +1718,7 @@ async function restartDsh(confirm) {
       fs.writeSync(fd, `\n===== ${new Date().toISOString()} 面板重启 DSH =====\n`);
       const child = spawn('cmd.exe', ['/d', '/c', 'start-dsh.bat'], {
         cwd: DSH_DIR,
-        env: { ...process.env, PATH: `${NODE_DIR};${process.env.PATH || ''}` },
+        env: { ...(await panelEnv()), PATH: `${NODE_DIR};${process.env.PATH || ''}` },
         windowsHide: true,
         detached: true,
         stdio: ['ignore', fd, fd],
@@ -2189,6 +2313,40 @@ async function handler(req, res) {
       };
       if (tail.missing) payload.detail = `日志文件不存在或暂不可读：${file}`;
       sendJson(res, 200, payload);
+      return;
+    }
+    if (req.method === 'GET' && pathname === '/api/settings') {
+      // 含 Key 的接口只允许本机控制台页面自己读
+      res.setHeader('access-control-allow-origin', `http://127.0.0.1:${PANEL_PORT}`);
+      try {
+        const s = await loadSettings();
+        const keys = {};
+        for (const k of KNOWN_KEYS) {
+          keys[k.key] = { set: Boolean(s.env[k.key]), masked: maskKey(s.env[k.key]), label: k.label, hint: k.hint };
+        }
+        sendJson(res, 200, { ok: true, modules: s.modules, keys, moduleIds: MCP_MODULE_IDS });
+      } catch (err) {
+        sendJson(res, 200, { ok: false, error: String(err && err.message ? err.message : err) });
+      }
+      return;
+    }
+    if (req.method === 'POST' && pathname === '/api/settings') {
+      res.setHeader('access-control-allow-origin', `http://127.0.0.1:${PANEL_PORT}`);
+      let body = {};
+      try {
+        const raw = await readBody(req);
+        body = raw ? JSON.parse(raw) : {};
+      } catch {
+        body = {};
+      }
+      try {
+        const next = await saveSettings({ modules: body.modules, env: body.env });
+        const applied = await applyModuleSwitches(next.modules);
+        logLine(`api/settings：模块=${JSON.stringify(next.modules)} 落盘变更=${applied.changed}`);
+        sendJson(res, 200, { ok: true, modules: next.modules, applied });
+      } catch (err) {
+        sendJson(res, 200, { ok: false, error: String(err && err.message ? err.message : err) });
+      }
       return;
     }
     if (req.method === 'GET' && pathname === '/api/credentials') {

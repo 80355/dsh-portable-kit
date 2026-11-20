@@ -61,7 +61,25 @@ mcp-tts-voice
 `repath` 会把 `cordis.patch.yml` 里对应的缩进块整段摘掉，并留一行注释说明是谁摘的、什么时候摘的。
 想加回来？删掉那一行重跑即可。
 
-### 3. 手机操控：视觉只用来理解，点击一律走节点
+### 3. 图形化控制台：开关模块 + 填 API Key，不用碰配置文件
+
+不用打开编辑器改 YAML。`console/server.mjs` 在 `http://127.0.0.1:3300` 起一个本地面板，
+里面有一块「⚙️ 模块开关 & API 配置」：
+
+- **本地服务开关** —— QQ 模块（3100）、SnowLuma 网关（5099）、抖音自动化、手机遥控；
+- **MCP 工具开关** —— `mcp-snowluma` / `mcp-snowluma-host` / `mcp-web-search-safe` /
+  `mcp-shared-memory` / `mcp-tts-voice`。勾掉就等于往 `portable-strip.txt` 里写一行、
+  再跑一次 `repath` 把配置块摘掉，**重启 DSH 后这些工具就从列表里消失**（不是隐藏按钮，是真不给模型）；
+- **API Key 输入框** —— 视觉 / 多模态、OpenAI 兼容、模型通道、备用线路四类。填好点「保存配置」，
+  写进 `panel.config.json`（`.gitignore` 已忽略），之后拉起的 SnowLuma / QQ 桥接 / DSH 子进程都带上这些环境变量。
+  已经存过的 Key 回读时**只显示 `sk-d…3456` 这种打码形式**，不会把明文吐回前端。
+
+只想用命令行也行：`GET/POST /api/settings` 同一套逻辑。
+
+> 安全提示：面板只监听 `127.0.0.1`，并且只接受来自 `http://127.0.0.1:3300` 的跨域请求。
+> 它**不校验鉴权**——能开这台机器的人本来就能读到那些配置，别把 3300 暴露到局域网。
+
+### 4. 手机操控：视觉只用来理解，点击一律走节点
 
 纯视觉坐标点击在真机上抖动很大（分辨率、缩放、刘海、`dumpsys` 坐标系不一致）。
 这套工具的规矩是：
@@ -75,7 +93,7 @@ mcp-tts-voice
 - 无线调试优先：USB 会掉线，`adb pair <ip>:<port> <code>` 之后走 `_adb-tls-connect`。
 - 详见 [docs/手机操控.md](docs/手机操控.md)。
 
-### 4. 抖音自动化：不开无头浏览器，直接接管你自己的浏览器
+### 5. 抖音自动化：不开无头浏览器，直接接管你自己的浏览器
 
 不模拟登录、不碰风控接口。用本机 Edge/Chrome 开 `--remote-debugging-port=9222`，
 脚本走 CDP 操作真实页面——账号状态、推荐流、私信都是你本人的。
@@ -86,7 +104,7 @@ mcp-tts-voice
 
 详见 [docs/抖音自动化.md](docs/抖音自动化.md)。
 
-### 5. 厂商系统适配实录
+### 6. 厂商系统适配实录
 
 荣耀 MagicOS 的 iAware 会在**前台**都冻结第三方进程，`NotificationListenerService` 会被系统层
 拦掉绑定。仓库里带一份实测记录（[docs/MagicOS适配实录.md](docs/MagicOS适配实录.md)）：

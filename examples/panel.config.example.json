@@ -8,5 +8,25 @@
   "qqNumber": "",
   "autoRestart": false,
   "_qqExe": "QQ 客户端路径，留空则控制台的『启动 QQ』按钮不可用",
-  "_autoRestart": "子进程异常退出时是否自动重启"
+  "_autoRestart": "子进程异常退出时是否自动重启",
+  "_settings": "下面这段由面板『⚙️ 模块开关 & API 配置』自动维护，手改也行",
+  "settings": {
+    "modules": {
+      "qqBridge": true,
+      "snowluma": true,
+      "douyin": true,
+      "phone": true,
+      "mcpSnowluma": true,
+      "mcpSnowlumaHost": true,
+      "mcpWebSearch": true,
+      "mcpSharedMemory": true,
+      "mcpTtsVoice": false
+    },
+    "env": {
+      "COCO_KEY": "",
+      "OPENAI_API_KEY": "",
+      "COCO_API_KEY": "",
+      "COCO233_API_KEY": ""
+    }
+  }
 }

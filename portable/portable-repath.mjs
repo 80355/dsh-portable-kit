@@ -18,7 +18,18 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));      // <root>
 // 这里刻意「先认目录、再认环境变量」：如果环境里残留着别的安装的 DSH_HOME
 // （比如在 DSH 自己的 shell 里手动跑这个脚本），绝不能用它去改写别人的配置。
 const LOCAL_HOME = path.join(HERE, '.dsh');
-const DSH_HOME = fs.existsSync(path.join(LOCAL_HOME, 'profiles')) ? LOCAL_HOME : (process.env.DSH_HOME || LOCAL_HOME);
+const HAS_LOCAL = fs.existsSync(path.join(LOCAL_HOME, 'profiles'));
+// 安全闸：本栈没有自己的 .dsh/profiles 时，绝不回退去改环境变量指向的「别人的」安装。
+// 只有显式 --force 才允许（例如你把配置放在别处做调试）。
+if (!HAS_LOCAL && !process.argv.includes('--force')) {
+  const envHome = process.env.DSH_HOME;
+  console.error('[repath] 跳过：本栈没有 ' + LOCAL_HOME + ' 下的 profiles 目录');
+  console.error('[repath] ' + (envHome
+    ? '注意：环境变量 DSH_HOME=' + envHome + ' 指向另一份安装，本脚本不会去改它。'
+    : '请确认在正确的栈根目录运行；确实要改环境变量指向的安装请加 --force。'));
+  process.exit(2);
+}
+const DSH_HOME = HAS_LOCAL ? LOCAL_HOME : process.env.DSH_HOME;
 const PROFILE_DIR = path.join(DSH_HOME, 'profiles', 'web');
 const NODE_EXE = path.join(HERE, 'node', 'node.exe');
 const WORKSPACE = path.join(HERE, 'workspace');
