@@ -2530,6 +2530,24 @@ async function main() {
   fs.mkdirSync(STATE_DIR, { recursive: true });
   if (!fs.existsSync(HTML_PATH)) logLine(`警告：找不到页面文件 ${HTML_PATH}`);
 
+  // 端口优先级：--port 参数 > 环境变量 PANEL_PORT > 默认 3300（占用时退 3310）
+  const argIdx = process.argv.indexOf('--port');
+  const explicitPort = argIdx >= 0 ? Number(process.argv[argIdx + 1]) : Number(process.env.PANEL_PORT || 0);
+  if (Number.isFinite(explicitPort) && explicitPort > 0) {
+    PANEL_PORT = explicitPort;
+    const srv = http.createServer(handler);
+    srv.requestTimeout = 130000;
+    srv.headersTimeout = 20000;
+    srv.keepAliveTimeout = 5000;
+    try {
+      await listen(srv, explicitPort);
+    } catch (err) {
+      logLine('监听 127.0.0.1:' + explicitPort + ' 失败：' + String(err));
+      process.exit(1);
+    }
+    logLine('DeepSeek × QQ 控制台已启动：http://127.0.0.1:' + explicitPort);
+    return;
+  }
   let port = 3300;
   if (await tcpProbe(3300, 1000)) {
     if (await isOurPanel(3300)) {

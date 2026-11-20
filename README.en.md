@@ -8,6 +8,22 @@
 
 ---
 
+## 30-second version
+
+| What you get | What you do |
+| --- | --- |
+| A whole local AI stack that **actually acts**: reads/writes files, runs commands, sees a real phone screen and taps it, drives your own browser on Douyin, and can host a QQ bot | **Double-click `start-gui.bat`** and click through 4 steps in the browser |
+
+**Three steps (this is all a beginner needs)**
+
+1. **Double-click `start-gui.bat`** — finds Node by itself, starts a local page on `127.0.0.1:3400`, opens your browser.
+2. **Follow the page** — ① health check (red/yellow/green, tells you exactly what is missing) → ② paste API keys, toggle modules → ③ hit "Start".
+3. **Use it** — click "Open DSH in browser" to reach the agent UI; logs stream right below.
+
+> If you do not want to read code, edit config files, or memorize commands, you can stop reading here.
+> Stuck? See the [**handbook & Q&A**](docs/功能手册与问答.md) (30+ real gotchas).
+
+---
 ## What this is
 
 [DSH](https://github.com/deepseek-ai) (DeepSeek Harness) is a local AI agent that can read and write files,
@@ -18,6 +34,7 @@ run commands and drive a browser. This repo is **not** another agent. It solves 
 | Module | Problem it solves | Dir |
 | --- | --- | --- |
 | **Portable runtime** | The whole stack (runtime + config + memory + plugins) lives on an SD card. Drive letters change; it still runs. | [`portable/`](portable/) |
+| **GUI launcher** | Zero-dependency local page: health check, paste keys, toggle modules, one-click start/stop, live logs — beginners never touch a terminal | [`launcher/`](launcher/) |
 | **Phone control** | The agent actually taps a real phone: screenshot → vision → tap → type Chinese → UI-tree fallback | [`tools/phone/`](tools/phone/) |
 | **Douyin automation** | Drives your own browser over CDP: browse, scrape, DM, auto-share by topic | [`scripts/douyin/`](scripts/douyin/) |
 | **Local console** | A 3300-port web panel to start/restart the QQ bridge, SnowLuma, and DSH itself | [`console/`](console/) |
@@ -29,7 +46,21 @@ The companion QQ bot bridge is a separate public project:
 
 ## Why it is not just another dotfiles repo
 
-### 1. Real portability: it survives a drive-letter change
+### 1. Beginner entry point: one double-click, the rest is clicking
+
+Command lines are the number-one reason people bounce. So there is a **zero-dependency GUI launcher** (Node built-ins only — not even `npm install`):
+
+```text
+double-click start-gui.bat → it finds Node → serves 127.0.0.1:3400 → 4 steps in the browser
+```
+
+- **① Health check** — 8 items at once: Node version, DSH binary, config dir, workspace, disk writability, both ports, API keys. Red/yellow/green dots plus a fix hint per item.
+- **② Keys & modules** — paste four kinds of API keys (read-back shows only `sk-d…3456`); 9 module checkboxes (QQ bridge / SnowLuma / Douyin / phone / 5 MCP tools). Unchecking really removes the config block.
+- **③ Start & logs** — one-click start for DSH + console, auto-detects the tokenized URL DSH prints, live log tail; stopping kills the whole process tree.
+- **④ Troubleshooting** — common failures are answered inline, no doc-diving needed.
+
+The launcher and the console share `console/panel.config.json`, so it does not matter which UI you use.
+### 2. Real portability: it survives a drive-letter change
 
 Hard-coded absolute paths are where every "green/portable build" dies. Here they are **rewritten idempotently on every launch**:
 
@@ -50,7 +81,7 @@ One real trap: SD cards are usually **exFAT**, and exFAT **does not support junc
 The kit ships the "materialise links into real dirs" copy logic, and the verifier asserts a link-free tree —
 so a stray junction cannot creep back in silently.
 
-### 2. Declarative stripping
+### 3. Declarative stripping
 
 Two 34 GB voice models do not fit on the card? Don't touch the code, write one line:
 
@@ -62,7 +93,7 @@ mcp-tts-voice
 `repath` removes that indented block from `cordis.patch.yml` entirely and leaves a comment saying who removed it.
 Want it back? Delete the line and re-run.
 
-### 3. A GUI console: toggle modules, paste API keys
+### 4. A GUI console: toggle modules, paste API keys
 
 No YAML editing. `console/server.mjs` serves a local panel at `http://127.0.0.1:3300`
 with a "Modules & API keys" card:
@@ -82,7 +113,7 @@ Same logic over HTTP: `GET/POST /api/settings`.
 > `http://127.0.0.1:3300`. It has **no auth** — anyone who can open this machine can read
 > those settings anyway, so never expose port 3300 to a LAN.
 
-### 4. Phone control: vision for meaning, UI-tree for coordinates
+### 5. Phone control: vision for meaning, UI-tree for coordinates
 
 Pure vision-based tapping jitters badly on real devices (DPI, scaling, notches, `dumpsys` coordinate mismatch).
 The rule here is:
@@ -96,7 +127,7 @@ screenshot → grid overlay → vision model reads meaning → uiNodes()/findNod
 - Wireless ADB first: USB keeps dropping, so `adb pair <ip>:<port> <code>` then `_adb-tls-connect`.
 - See [docs/手机操控.md](docs/手机操控.md).
 
-### 5. Douyin automation: your browser, not a headless one
+### 6. Douyin automation: your browser, not a headless one
 
 No fake logins, no risk-control API abuse. Launch your own Edge/Chrome with `--remote-debugging-port=9222`,
 then drive the real page over CDP — account state, feed and DMs are genuinely yours.
@@ -107,7 +138,7 @@ then drive the real page over CDP — account state, feed and DMs are genuinely 
 
 See [docs/抖音自动化.md](docs/抖音自动化.md).
 
-### 6. Vendor-ROM adaptation field notes
+### 7. Vendor-ROM adaptation field notes
 
 Honor's MagicOS iAware freezes third-party processes **even in the foreground**, and blocks third-party
 `NotificationListenerService` binds at the system layer. [docs/MagicOS适配实录.md](docs/MagicOS适配实录.md)
@@ -119,28 +150,43 @@ records what the logcat evidence looks like, which adb-level exemptions are usel
 
 ## Quick start
 
-**A. Build your own stack from this repo**
+### Path A (recommended for beginners): double-click one .bat
 
 ```bash
-git clone https://github.com/<you>/dsh-portable-kit.git
-cd dsh-portable-kit
-node portable/portable-verify.mjs   # shows what is missing (lots of failures at first: expected)
+git clone https://github.com/80355/dsh-portable-kit.git
 ```
 
-Then follow [docs/便携卡使用说明.md](docs/便携卡使用说明.md), drop `node/`, `.dsh/` and `workspace/` on the card, and run `start-dsh.bat`.
+Put the repo at the root of your card/folder (avoid `Program Files` or sync folders), then:
 
-**B. Just make your existing stack portable**
+1. **Double-click `start-gui.bat`** — it finds Node itself (`node
+ode.exe` → parent dir → system PATH), starts the local page and opens the browser.
+2. Walk the page: **① health check → ② keys & modules → ③ start & logs**. Fix any red item first; green/yellow is fine to start.
+3. Click "Start", then "Open DSH in browser".
 
-1. Copy `portable/*` into the root of your current stack;
-2. Run `node portable-repath.mjs` (rewrites hard-coded paths relative to the current root);
-3. Run `node portable-verify.mjs` and clean up whatever it reports.
+No `npm install`, no manual config editing. See chapter 2 and section 12 of chapter 3 in the [handbook](docs/功能手册与问答.md).
+
+### Path B: build a full card from scratch
+
+```bash
+node portable/portable-verify.mjs   # tells you what is missing (lots of failures at first is normal)
+```
+
+Then follow [docs/便携卡使用说明.md](docs/便携卡使用说明.md) to copy the DSH runtime in,
+add `node/`, `.dsh/`, `workspace/`, and finally run `start-dsh.bat`.
+
+### Path C: just make your existing install portable
+
+1. Copy `portable/*` into the root of your existing stack;
+2. Run `node portable-repath.mjs` (rewrites hard-coded paths to point at the current root);
+3. Run `node portable-verify.mjs` and clear the errors one by one.
 
 ---
-
 ## Layout
 
 ```text
 dsh-portable-kit/
+├── start-gui.bat        # beginner entry point: one double-click
+├── launcher/            # GUI launcher (:3400 — health check / keys / modules / start-stop / logs)
 ├── portable/            # portable runtime: launch, path rewrite, verify, sync
 ├── tools/phone/         # phone control: ADB + vision + UI tree + Chinese input
 ├── scripts/douyin/      # Douyin automation over CDP
@@ -152,6 +198,58 @@ dsh-portable-kit/
 
 ---
 
+## Docs
+
+| Doc | For | Covers |
+| --- | --- | --- |
+| [**Handbook & Q&A**](docs/功能手册与问答.md) | **everyone, especially beginners** | what each feature is for, two ten-minute paths, per-feature deep dive, CocoAPI picks, 30+ Q&As, cheat-sheet appendix (Chinese) |
+| [Portable card guide](docs/便携卡使用说明.md) | building your own card | card layout, copy & sync, moving machines |
+| [Phone control](docs/手机操控.md) | driving a real phone | ADB, wireless pairing, UI tree, Chinese input, vision chain |
+| [Douyin automation](docs/抖音自动化.md) | automating Douyin | CDP takeover, script usage, budgets and caution |
+| [Configuration](docs/配置说明.md) | editing config | `cordis.patch.yml` / `panel.config.json` / env var table |
+| [Architecture](docs/架构.md) | reading / extending code | layers, startup sequence, trade-offs |
+| [MagicOS field notes](docs/MagicOS适配实录.md) | fighting vendor ROMs | real logcat evidence, useless adb exemptions, the three manual steps |
+
+---
+
+## Model gateway: CocoAPI (recommended)
+
+Without a model key this stack is an empty shell. The author uses [**CocoAPI**](https://api.cocoapi.top),
+an **OpenAI-compatible aggregator** at `https://api.cocoapi.top/v1` — same wire format as OpenAI, so every script here
+works by pointing `baseURL` at it.
+
+- Directly reachable from mainland China (no network gymnastics just to call an API);
+- One key unlocks many models (118 in `/v1/models` at the time of writing: Claude / GPT / Gemini / DeepSeek / Grok / Kimi / GLM / Qwen …);
+- Pay with Alipay/WeChat, no international credit card;
+- The project reserves `COCO_KEY` (vision) plus `COCO_API_KEY` / `COCO233_API_KEY` (primary / backup line).
+
+| Purpose | Field in the panel | Env var |
+| --- | --- | --- |
+| Phone screen reading (**must support image input**) | Vision / multimodal key | `COCO_KEY` |
+| Agent main chat & tool calls | Model-channel key | `COCO_API_KEY` |
+| Fallback when the primary line throttles | Backup-line key | `COCO233_API_KEY` |
+| You own an official OpenAI key | OpenAI key | `OPENAI_API_KEY` |
+
+Verified model names (Nov 2026, copy-paste ready):
+
+| Use case | Model | Result |
+| --- | --- | --- |
+| **Phone screen reading (vision)** | `claude-sonnet-5` | 200 / ~2.0s |
+| Stronger vision | `claude-opus-5` | 200 / ~2.6s |
+| **Agent main model (coding / tool calls)** | `gpt-5.6` | 200 / ~1.8s |
+| Agent main model, alt | `gpt-6.2-sol` | 200 / ~1.9s |
+| Cheap & fast / long context | `deepseek-v4.1-flash-1017` | 200 / ~3.1s |
+| Stronger reasoning, slower | `deepseek-v4-pro-0813` | 200 / ~5.8s |
+| Chinese writing | `kimi-k3` | 200 / ~4.9s |
+| Backup | `grok-4.7` | 200 / but ~11s |
+
+> ⚠️ **Gemini models timed out from this machine** (`gemini-4-argon`, `gemini-3.8-flash`: no response in 60s).
+> Do not make them your only line. Pointing at another OpenAI-compatible provider works too — just keep the vision step image-capable.
+
+> No real keys live in this repo. Whatever you paste is written only to your local `console/panel.config.json`
+> (already in `.gitignore`) and is read back masked (`sk-d…3456`).
+
+---
 ## Requirements
 
 | Item | Requirement |
